@@ -1,20 +1,48 @@
-import { useTreeNodeManager } from '../hooks/use-tree-node-manager';
-import { TreeNodeManager } from '../classes/tree-node-manager';
-import { TreeNodeManagerContext } from '../contexts';
-interface TreeProps<T> {
-  data: T[];
-  children: React.ReactNode;
-  getId?: TreeNodeManager<T>['getId'];
-  getChildren?: TreeNodeManager<T>['getChildren'];
+import { FixedSizeList } from 'react-window';
+import { Row } from './row';
+import { useControllableValue } from 'ahooks';
+import {
+  type TreeNode,
+  useTreeNodeManager,
+  useTreeFlattenNodes,
+  TreeNodeManagerContext,
+} from '../core';
+interface TreeProps {
+  data: TreeNode[];
+  defaultExpandedIds?: TreeNode['id'][];
+  expandedIds?: TreeNode['id'][];
+  onExpend?: (expandedIds: TreeNode['id'][]) => void;
 }
-export function Tree<T>(props: TreeProps<T>) {
-  const { data, children, getId, getChildren } = props;
-  
-  const treeNodeManager = useTreeNodeManager<T>(data, { getId, getChildren });
+export function Tree(props: TreeProps) {
+  const { data } = props;
+  const [expandedIds, setExpandedIds] = useControllableValue<
+    TreeProps['expandedIds']
+  >(props, {
+    defaultValue: props.defaultExpandedIds,
+    defaultValuePropName: 'defaultExpandedIds',
+    valuePropName: 'expandedIds',
+    trigger: 'onExpend',
+  });
+  const treeNodeManager = useTreeNodeManager(data);
 
   return (
     <TreeNodeManagerContext.Provider value={treeNodeManager}>
-      {children}
+      <TreeImpl />
     </TreeNodeManagerContext.Provider>
+  );
+}
+
+function TreeImpl() {
+  const flattenData = useTreeFlattenNodes();
+
+  return (
+    <FixedSizeList
+      itemCount={flattenData.length}
+      height={500}
+      width={500}
+      itemSize={30}
+    >
+      {Row}
+    </FixedSizeList>
   );
 }

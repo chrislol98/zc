@@ -7,7 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-8">
           <Link href="/">
             <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent cursor-pointer">
-              ZC
+              ZAC
             </h2>
           </Link>
           <nav className="flex items-center gap-6">
@@ -18,10 +18,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               Docs
             </Link>
             <Link
-              href="/portfolio"
+              href="/english"
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
             >
-              Portfolio
+              English
             </Link>
           </nav>
         </div>

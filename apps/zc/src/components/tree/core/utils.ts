@@ -1,10 +1,10 @@
-import { TreeId } from './types'
+import { TreeNode } from './types';
 
-function hasTreeId(data: unknown): data is { id: TreeId } {
+function hasTreeId(data: unknown): data is { id: TreeNode['id'] } {
   return typeof data === 'object' && data !== null && 'id' in data;
 }
 
-export function getId<T>(data: T): TreeId {
+export function getId<T>(data: T): TreeNode['id'] {
   if (!hasTreeId(data)) {
     throw new Error('tree node is missing property id')
   }

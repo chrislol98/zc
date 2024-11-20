@@ -11,11 +11,11 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  {
-    title: 'Components',
-    href: '/docs/components',
-    children: [{ title: 'Tree', href: '/docs/components/tree' }],
-  },
+  { title: 'Tree', href: '/docs/tree' },
+  { title: 'Rate', href: '/docs/rate' },
+  { title: 'Dynamic Form', href: '/docs/dynamic-form' },
+  { title: 'Table', href: '/docs/table' },
+  { title: 'Tanstack Query', href: '/docs/tanstack-query' },
 ];
 
 function MenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }) {
@@ -29,32 +29,40 @@ function MenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }) {
     }
   };
 
+  const content = (
+    <div
+      className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-gray-100 cursor-pointer
+        ${depth ? 'pl-' + (depth * 4 + 2) : ''}
+      `}
+      onClick={toggleOpen}
+    >
+      <div className="flex items-center">
+        {Icon && <Icon className="mr-2 h-4 w-4" />}
+        {item.title}
+      </div>
+      {hasChildren && (
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="w-full">
-      <div
-        className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-gray-100 cursor-pointer
-          ${depth ? 'pl-' + (depth * 4 + 2) : ''}
-        `}
-        onClick={toggleOpen}
-      >
-        <div className="flex items-center">
-          {Icon && <Icon className="mr-2 h-4 w-4" />}
-          {item.title}
-        </div>
-        {hasChildren && (
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${
-              isOpen ? 'rotate-180' : ''
-            }`}
-          />
-        )}
-      </div>
+      {item.href ? (
+        <Link href={item.href}>
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
       {hasChildren && isOpen && (
         <div className="mt-1 ml-4">
           {item.children?.map((child, index) => (
-            <Link key={index} href={child.href || '#'}>
-              <MenuItem item={child} depth={depth + 1} />
-            </Link>
+            <MenuItem key={index} item={child} depth={depth + 1} />
           ))}
         </div>
       )}
