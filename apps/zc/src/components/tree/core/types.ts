@@ -4,5 +4,5 @@ export interface TreeNode {
   children?: TreeNode[];
   parentId?: TreeNode['id'];
   isExpanded?: boolean;
-  isChecked?: boolean;
+  isChecked?: boolean | 'indeterminate';
 }

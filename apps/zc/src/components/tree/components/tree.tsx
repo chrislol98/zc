@@ -1,6 +1,5 @@
 import { FixedSizeList } from 'react-window';
 import { Row } from './row';
-import { useControllableValue } from 'ahooks';
 import {
   type TreeNode,
   useTreeNodeManager,
@@ -11,19 +10,13 @@ interface TreeProps {
   data: TreeNode[];
   defaultExpandedIds?: TreeNode['id'][];
   expandedIds?: TreeNode['id'][];
-  onExpend?: (expandedIds: TreeNode['id'][]) => void;
+  onExpand?: (expandedIds: TreeNode['id'][]) => void;
+  loadData?: (node: TreeNode) => Promise<TreeNode[]>;
 }
 export function Tree(props: TreeProps) {
   const { data } = props;
-  const [expandedIds, setExpandedIds] = useControllableValue<
-    TreeProps['expandedIds']
-  >(props, {
-    defaultValue: props.defaultExpandedIds,
-    defaultValuePropName: 'defaultExpandedIds',
-    valuePropName: 'expandedIds',
-    trigger: 'onExpend',
-  });
-  const treeNodeManager = useTreeNodeManager(data);
+
+  const treeNodeManager = useTreeNodeManager(data, props);
 
   return (
     <TreeNodeManagerContext.Provider value={treeNodeManager}>
@@ -33,6 +26,8 @@ export function Tree(props: TreeProps) {
 }
 
 function TreeImpl() {
+  
+  // this hook control the re-render of the TreeImpl
   const flattenData = useTreeFlattenNodes();
 
   return (

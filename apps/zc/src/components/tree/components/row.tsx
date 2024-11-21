@@ -11,19 +11,17 @@ export function Row({
 }) {
   // this hook control the re-render of the row
   const treeNode = useTreeNode(index);
-  
+
   const treeNodeManager = useTreeNodeManagerContext();
 
-  if (!treeNode || !treeNode.data) {
-    return null;
-  }
+  if (!treeNode) return null;
 
-  const handleToggle = () => {
-    treeNodeManager.editNode(treeNode.id, { isExpanded: !treeNode.isExpanded });
+  const handleExpand = () => {
+    treeNodeManager.updateNode(treeNode.id, 'isExpanded', !treeNode.isExpanded);
   };
 
   const handleCheck = (checked: boolean) => {
-    treeNodeManager.editNode(treeNode.id, { isChecked: checked });
+    treeNodeManager.updateNode(treeNode.id, 'isChecked', checked);
   };
 
   return (
@@ -36,7 +34,7 @@ export function Row({
     >
       <span className="w-5 h-5 inline-flex items-center justify-center mr-1">
         {treeNode.children?.length > 0 && (
-          <span onClick={handleToggle} className="cursor-pointer">
+          <span onClick={handleExpand} className="cursor-pointer">
             {treeNode.isExpanded ? (
               <ChevronDown className="w-4 h-4" />
             ) : (

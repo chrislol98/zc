@@ -1,7 +1,12 @@
-[ ] select
-[ ] check
-[ ] indeterminate
-[ ] control
-[ ] loading remote data
-[ ] drag
-
+1. 受控属性
+   1. 展开
+   2. 点击
+   3. 选择
+3. 可展开
+   1. 懒加载
+4. 可点击
+   1. 父子节点无关联
+   2. indeterminate
+6. 可选择
+7. 可拖拽
+9. 虚拟列表
