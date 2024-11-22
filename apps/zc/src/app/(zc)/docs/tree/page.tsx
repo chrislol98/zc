@@ -1,7 +1,7 @@
 'use client';
 import { Tree } from '@/components/tree';
 import { TreeNode } from '@/components/tree/core/types';
-
+import { useState } from 'react';
 function generateTreeData(depth: number = 4, breadth: number = 5): TreeNode[] {
   const generateNode = (prefix: string, currentDepth: number): TreeNode => {
     const node: TreeNode = {
@@ -30,6 +30,19 @@ function generateTreeData(depth: number = 4, breadth: number = 5): TreeNode[] {
 
 export default function Page() {
   const treeData = generateTreeData();
-
-  return <Tree data={treeData} onCheck={console.log}/>;
+  const [checkedIds, setCheckedIds] = useState<TreeNode['id'][]>(['1', '2']);
+  const [expandsId, setExpandsId] = useState<TreeNode['id'][]>(['1', '2']);
+  return (
+    <Tree
+      data={treeData}
+      checkedIds={checkedIds}
+      onCheck={(val) => {
+        setCheckedIds(val);
+      }}
+      // expandedIds={expandsId}
+      // onExpand={(val) => {
+      //   setExpandsId(val);
+      // }}
+    />
+  );
 }

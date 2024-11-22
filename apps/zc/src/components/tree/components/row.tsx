@@ -11,7 +11,7 @@ export function Row({
 }) {
   // this hook control the re-render of the row
   const treeNode = useTreeNode(index);
-
+  
   const treeNodeManager = useTreeNodeManagerContext();
 
   if (!treeNode) return null;
@@ -49,6 +49,7 @@ export function Row({
         className="mr-2"
       />
       <span>{treeNode.data.label}</span>
+      <span>{JSON.stringify(treeNode.isChecked)}</span>
     </div>
   );
 }
