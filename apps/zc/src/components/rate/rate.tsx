@@ -16,8 +16,7 @@ export const Rate = (_props: RateProps) => {
     defaultValue: 0,
     count: 5,
     icon: <Star />,
-    // TODO: HOW TO GET RID OF SATISFIES
-  } satisfies RateProps);
+  });
   const { count, icon } = props;
   const [value, setValue] = useControllableValue<RateProps['value']>(props);
   const [hoverValue, setHoverValue] = useState(value);

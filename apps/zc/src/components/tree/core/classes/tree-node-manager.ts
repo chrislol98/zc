@@ -2,8 +2,24 @@ import { TreeNode } from "../types";
 import { TreeNodeImpl } from "./tree-node-impl";
 
 export class TreeNodeManager {
-  private loadData?: (node: TreeNode) => Promise<TreeNode[]>;
   private subscribers: Set<() => void> = new Set();
+  private rootNodes: TreeNodeImpl[] = [];
+  private nodeMap: Map<TreeNodeImpl['id'], TreeNodeImpl> = new Map();
+  private expandedIds: {
+    isControlled?: boolean;
+    value?: TreeNode['id'][];
+    preValue?: TreeNode['id'][];
+  } = {};
+  private checkedIds: {
+    isControlled?: boolean;
+    value?: TreeNode['id'][];
+    preValue?: TreeNode['id'][];
+  } = {};
+  checkStrictly: boolean = true;
+  private flattenNodes: TreeNodeImpl[] = [];
+  private loadData?: (node: TreeNode) => Promise<TreeNode[]>;
+  private onCheck?: (checkedIds: TreeNode['id'][]) => void;
+  private onExpand?: (expandedIds: TreeNode['id'][]) => void;
   subscribe = (listener: () => void): () => void => {
     this.subscribers.add(listener);
     return () => {
@@ -13,23 +29,29 @@ export class TreeNodeManager {
   private notifySubscribers(): void {
     this.subscribers.forEach(listener => listener());
   }
-  private rootNodes: TreeNodeImpl[] = [];
 
-  private nodeMap: Map<TreeNodeImpl['id'], TreeNodeImpl> = new Map();
-  private expandedIds: {
-    isControlled?: boolean;
-    value?: TreeNode['id'][];
-    preValue?: TreeNode['id'][];
-  } = {};
-  private onExpand?: (expandedIds: TreeNode['id'][]) => void;
+  getFlattenNodes = (): TreeNodeImpl[] => {
+    return this.flattenNodes;
+  };
 
+  getNodeByIndex = (index: number): TreeNodeImpl | undefined => {
+    return this.flattenNodes[index];
+  };
+
+  updateNode = (id: TreeNodeImpl['id'], key: keyof TreeNode, value: TreeNode[keyof TreeNode]): void => {
+    if (key === 'isExpanded') {
+      this.updateNodeExpansion(id, value);
+    } else if (key === 'isChecked') {
+      this.updateNodeCheck(id, value);
+    }
+  };
   updateNodeExpansion(id: TreeNodeImpl['id'], value: TreeNode[keyof TreeNode]) {
     const { isControlled } = this.expandedIds;
     const expandedIds = value ? [...(this.expandedIds?.value || []), id] : (this.expandedIds?.value || []).filter(expandedId => expandedId !== id);
     if (!isControlled) {
       this.updateNodeImpl(id, 'isExpanded', value);
+      this.updateExpandedIds(undefined, expandedIds);
       this.flattenNodes = this.flattenTree(this.rootNodes);
-      this.expandedIds.value = expandedIds;
       this.notifySubscribers();
     }
     this.onExpand?.(expandedIds);
@@ -44,7 +66,8 @@ export class TreeNodeManager {
       this.expandedIds.preValue = currentExpandedIds;
     }
   }
-  applyExpandIds() {
+
+  applyExpandedIds(): void {
     if (this.expandedIds.preValue) {
       this.expandedIds.preValue.forEach(id => {
         this.updateNodeImpl(id, 'isExpanded', false);
@@ -58,23 +81,70 @@ export class TreeNodeManager {
     }
   }
 
-  private flattenNodes: TreeNodeImpl[] = [];
-  getFlattenNodes = (): TreeNodeImpl[] => {
-    return this.flattenNodes;
-  };
-  getNodeByIndex = (index: number): TreeNodeImpl | undefined => {
-    return this.flattenNodes[index];
-  };
+  updateNodeCheck(id: TreeNodeImpl['id'], value: TreeNode[keyof TreeNode]) {
+    const { isControlled } = this.checkedIds;
+    const thisCheckedIds = new Set(this.checkedIds.value);
 
-  updateNode = (id: TreeNodeImpl['id'], key: keyof TreeNode, value: TreeNode[keyof TreeNode]): void => {
-    if (key === 'isExpanded') {
-      this.updateNodeExpansion(id, value);
-    } else if (key === 'isChecked') {
-      this.updateNodeCheck(id, value);
+    if (value) {
+      thisCheckedIds.add(id);
+    } else {
+      thisCheckedIds.delete(id);
     }
-  };
 
-  getNodeCheckState(id: TreeNodeImpl['id']): boolean | 'indeterminate' {
+    if (!isControlled) {
+      const updateNodeCheckImpl = (id: TreeNodeImpl['id']) => {
+        this.updateNodeImpl(id, 'isChecked', value);
+        if (this.checkStrictly) return;
+        const node = this.nodeMap.get(id);
+        if (node) {
+          node.children?.forEach(child => {
+            updateNodeCheckImpl(child.id);
+            if (value) {
+              thisCheckedIds.add(child.id);
+            } else {
+              thisCheckedIds.delete(child.id);
+            }
+          })
+        }
+      }
+      updateNodeCheckImpl(id);
+      this.updateCheckedIds(undefined, [...thisCheckedIds]);
+      this.setNodeIndeterminate(id)
+      this.flattenNodes = this.flattenTree(this.rootNodes);
+      this.notifySubscribers();
+    }
+
+    this.onCheck?.([...thisCheckedIds]);
+  }
+
+  updateCheckedIds(checkedIds?: TreeNode['id'][], defaultCheckedIds?: TreeNode['id'][]) {
+    const currentCheckedIds = this.checkedIds.value;
+    const newCheckedIds = checkedIds || defaultCheckedIds;
+    if (currentCheckedIds !== newCheckedIds) {
+      this.checkedIds.isControlled = !!checkedIds;
+      this.checkedIds.value = newCheckedIds;
+      this.checkedIds.preValue = currentCheckedIds;
+    }
+  }
+
+  setNodeIndeterminate(id: TreeNodeImpl['id']): void {
+    const impl = (id: TreeNodeImpl['id']) => {
+      const node = this.nodeMap.get(id);
+      if (!node) return;
+      const nodeCheckState = this.getNodeCheckedState(id);
+
+      this.updateNodeImpl(id, 'isChecked', nodeCheckState);
+
+      const parentNode = this.nodeMap.get(node.parentId)
+      if (!parentNode) return;
+      impl(parentNode.id);
+    }
+    const node = this.nodeMap.get(id);
+    if (!node) return;
+    impl(node.parentId);
+  }
+  
+  getNodeCheckedState(id: TreeNodeImpl['id']): boolean | 'indeterminate' {
     const node = this.nodeMap.get(id);
     if (!node || node.children.length === 0) {
       return !!node?.isChecked;
@@ -82,7 +152,7 @@ export class TreeNodeManager {
 
     const childStates = node.children.map(child => {
       if (child.children.length > 0) {
-        return this.getNodeCheckState(child.id);
+        return this.getNodeCheckedState(child.id);
       }
       return !!child.isChecked;
     });
@@ -96,45 +166,6 @@ export class TreeNodeManager {
     }
 
     return hasChecked && !hasUnchecked;
-  }
-
-  setNodeIndeterminate(id: TreeNodeImpl['id']): void {
-    const impl = (id: TreeNodeImpl['id']) => {
-      const node = this.nodeMap.get(id);
-      if (!node) return;
-      const nodeCheckState = this.getNodeCheckState(id);
-
-      this.updateNodeImpl(id, 'isChecked', nodeCheckState);
-
-      const parentNode = this.nodeMap.get(node.parentId)
-      if (!parentNode) return;
-      console.log('parentNode', parentNode);
-      impl(parentNode.id);
-    }
-
-    impl(id);
-  }
-
-  updateNodeCheck(id: TreeNodeImpl['id'], value: TreeNode[keyof TreeNode]) {
-    this.updateNodeImpl(id, 'isChecked', value);
-
-    const node = this.nodeMap.get(id);
-    if (node) {
-      const updateNodeCheckImpl = (children: TreeNodeImpl[]) => {
-        for (const child of children) {
-          this.updateNodeImpl(child.id, 'isChecked', value);
-          if (child.children.length > 0) {
-            updateNodeCheckImpl(child.children);
-          }
-        }
-      };
-
-      updateNodeCheckImpl(node.children);
-    }
-
-    this.setNodeIndeterminate(id);
-    this.flattenNodes = this.flattenTree(this.rootNodes);
-    this.notifySubscribers();
   }
 
   updateNodeImpl(id: TreeNodeImpl['id'], key: keyof TreeNode, value: TreeNode[keyof TreeNode]): void {
@@ -161,28 +192,36 @@ export class TreeNodeManager {
   }
 
 
+
+
+
+
+
+
   init(data: TreeNode[], options: {
     expandedIds?: TreeNode['id'][];
-    onExpand?: (expandedIds: TreeNode['id'][]) => void;
-    loadData?: (node: TreeNode) => Promise<TreeNode[]>;
     defaultExpandedIds?: TreeNode['id'][];
+    onExpand?: (expandedIds: TreeNode['id'][]) => void;
+    checkedIds?: TreeNode['id'][];
+    defaultCheckedIds?: TreeNode['id'][];
+    onCheck?: (checkedIds: TreeNode['id'][]) => void;
+    loadData?: (node: TreeNode) => Promise<TreeNode[]>;
+
   }): void {
     const { expandedIds, onExpand, loadData, defaultExpandedIds } = options;
     this.onExpand = onExpand;
     this.loadData = loadData;
     this.updateExpandedIds(expandedIds, defaultExpandedIds);
     this.rootNodes = this.buildTree(data);
-    this.applyExpandIds();
     this.flattenNodes = this.flattenTree(this.rootNodes);
   }
 
-  update(options: {
-    expandedIds?: TreeNode['id'][];
-    defaultExpandedIds?: TreeNode['id'][];
-    onExpand?: (expandedIds: TreeNode['id'][]) => void;
-    loadData?: (node: TreeNode) => Promise<TreeNode[]>;
-  }): void {
-    const { expandedIds, defaultExpandedIds, onExpand, loadData } = options;
+  update(options: Parameters<typeof this.init>[1]): void {
+    const { expandedIds, defaultExpandedIds, onExpand, loadData, onCheck } = options;
+
+    if (onCheck && this.onCheck !== onCheck) {
+      this.onCheck = onCheck;
+    }
 
     if (onExpand && this.onExpand !== onExpand) {
       this.onExpand = onExpand;
@@ -194,7 +233,7 @@ export class TreeNodeManager {
 
     if (expandedIds || defaultExpandedIds) {
       this.updateExpandedIds(expandedIds || defaultExpandedIds);
-      this.applyExpandIds();
+      this.applyExpandedIds();
       this.flattenNodes = this.flattenTree(this.rootNodes);
     }
   }
@@ -207,6 +246,7 @@ export class TreeNodeManager {
           label: item.label,
           parentId,
           data: item,
+          isExpanded: this.expandedIds.value?.includes(item.id),
           children: item.children ? buildTreeImpl(item.children, item.id) : []
         });
         this.nodeMap.set(node.id, node);
@@ -227,7 +267,4 @@ export class TreeNodeManager {
       return acc;
     }, []);
   }
-
-
 }
-

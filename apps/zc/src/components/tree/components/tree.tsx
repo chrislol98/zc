@@ -6,14 +6,14 @@ import {
   useTreeFlattenNodes,
   TreeNodeManagerContext,
 } from '../core';
+
 interface TreeProps {
   data: TreeNode[];
-  defaultExpandedIds?: TreeNode['id'][];
-  expandedIds?: TreeNode['id'][];
-  onExpand?: (expandedIds: TreeNode['id'][]) => void;
-  loadData?: (node: TreeNode) => Promise<TreeNode[]>;
 }
-export function Tree(props: TreeProps) {
+
+export function Tree(
+  props: TreeProps & Parameters<typeof useTreeNodeManager>[1]
+) {
   const { data } = props;
 
   const treeNodeManager = useTreeNodeManager(data, props);
@@ -26,7 +26,6 @@ export function Tree(props: TreeProps) {
 }
 
 function TreeImpl() {
-  
   // this hook control the re-render of the TreeImpl
   const flattenData = useTreeFlattenNodes();
 
