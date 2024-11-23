@@ -35,10 +35,10 @@ export default function Page() {
   return (
     <Tree
       data={treeData}
-      checkedIds={checkedIds}
-      onCheck={(val) => {
-        setCheckedIds(val);
-      }}
+      // checkedIds={checkedIds}
+      // onCheck={(val) => {
+      //   setCheckedIds(val);
+      // }}
       // expandedIds={expandsId}
       // onExpand={(val) => {
       //   setExpandsId(val);

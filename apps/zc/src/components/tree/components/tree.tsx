@@ -3,7 +3,7 @@ import { Row } from './row';
 import {
   type TreeNode,
   useTreeNodeManager,
-  useTreeFlattenNodes,
+  useTreeFlattenNodeCount,
   TreeNodeManagerContext,
 } from '../core';
 
@@ -15,9 +15,8 @@ export function Tree(
   props: TreeProps & Parameters<typeof useTreeNodeManager>[1]
 ) {
   const { data } = props;
-
+  
   const treeNodeManager = useTreeNodeManager(data, props);
-
   return (
     <TreeNodeManagerContext.Provider value={treeNodeManager}>
       <TreeImpl />
@@ -27,11 +26,10 @@ export function Tree(
 
 function TreeImpl() {
   // this hook control the re-render of the TreeImpl
-  const flattenData = useTreeFlattenNodes();
-
+  const count = useTreeFlattenNodeCount();
   return (
     <FixedSizeList
-      itemCount={flattenData.length}
+      itemCount={count}
       height={500}
       width={500}
       itemSize={30}

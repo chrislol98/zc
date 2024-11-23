@@ -1,6 +1,6 @@
 import { TreeNodeManager } from '../classes/tree-node-manager';
 import { TreeNode } from '../types';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export function useTreeNodeManager(
   data: TreeNode[],
@@ -11,15 +11,17 @@ export function useTreeNodeManager(
     treeNodeManager.init(data, options);
     return treeNodeManager;
   });
-  
+
   // NOTE: update onExpand, loadData wont re-build flattenTree
   // NOTE: update expandedIds, defaultExpandedIds will re-build flattenTree
   const isFirstRender = useRef(true);
-  if (!isFirstRender.current) {
-    treeNodeManager.update(options);
-  } else {
+  if (isFirstRender.current) {
     isFirstRender.current = false;
   }
-  
+  useLayoutEffect(() => {
+    if (isFirstRender.current) return;
+    treeNodeManager.update(options);
+  }, [options, treeNodeManager]);
+
   return treeNodeManager;
 }

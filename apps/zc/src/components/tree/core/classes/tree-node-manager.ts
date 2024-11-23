@@ -1,4 +1,3 @@
-import { checkDomainOfScale } from "recharts/types/util/ChartUtils";
 import { TreeNode } from "../types";
 import { TreeNodeImpl } from "./tree-node-impl";
 
@@ -18,6 +17,10 @@ export class TreeNodeManager {
   } = {};
   checkStrictly: boolean = true;
   private flattenNodes: TreeNodeImpl[] = [];
+  private idToIndexMap: Map<TreeNodeImpl['id'], number> = new Map();
+  getFlattenNodeCount = (): number => {
+    return this.flattenNodes.length;
+  };
   private loadData?: (node: TreeNode) => Promise<TreeNode[]>;
   private onCheck?: (checkedIds: TreeNode['id'][]) => void;
   private onExpand?: (expandedIds: TreeNode['id'][]) => void;
@@ -67,7 +70,7 @@ export class TreeNodeManager {
       this.expandedIds.preValue = currentExpandedIds;
     }
   }
-
+  // TODO: 看是不是能够优化的根applyCheckedIds一样
   applyExpandedIds() {
     if (this.expandedIds.preValue) {
       this.expandedIds.preValue.forEach(id => {
@@ -110,7 +113,6 @@ export class TreeNodeManager {
       updateNodeCheckImpl(id);
       this.updateCheckedIds(undefined, [...thisCheckedIds]);
       // this.setNodeIndeterminate(id)
-      this.flattenNodes = this.flattenTree(this.rootNodes);
       this.notifySubscribers();
     }
 
@@ -127,18 +129,22 @@ export class TreeNodeManager {
     }
   }
   applyCheckedIds() {
-    if (this.checkedIds.preValue) {
-      this.checkedIds.preValue.forEach(id => {
+    const preValue = new Set(this.checkedIds.preValue || []);
+    const value = new Set(this.checkedIds.value || []);
+
+    // Only uncheck nodes that are not in the new value
+    preValue.forEach(id => {
+      if (!value.has(id)) {
         this.updateNodeImpl(id, 'isChecked', false);
-      });
-    }
+      }
+    });
 
-    if (this.checkedIds.value) {
-      this.checkedIds.value.forEach(id => {
+    // Only check nodes that were not already checked
+    value.forEach(id => {
+      if (!preValue.has(id)) {
         this.updateNodeImpl(id, 'isChecked', true);
-      });
-    }
-
+      }
+    });
   }
   setNodeIndeterminate(id: TreeNodeImpl['id']): void {
     const impl = (id: TreeNodeImpl['id']) => {
@@ -183,6 +189,7 @@ export class TreeNodeManager {
 
   updateNodeImpl(id: TreeNodeImpl['id'], key: keyof TreeNode, value: TreeNode[keyof TreeNode]): void {
     const node = this.nodeMap.get(id);
+    // shallow clone node in nodeMap rootNodes flattenNodes，in order to cause re-render
     if (node) {
       const newNode = node.clone({ [key]: value });
       // 1 nodeMap
@@ -200,6 +207,11 @@ export class TreeNodeManager {
         if (rootIndex >= 0) {
           this.rootNodes[rootIndex] = newNode;
         }
+      }
+      // 3 flattenNodes
+      const index = this.idToIndexMap.get(id);
+      if (index !== undefined) {
+        this.flattenNodes[index] = newNode;
       }
     }
   }
@@ -239,19 +251,18 @@ export class TreeNodeManager {
     if (loadData && this.loadData !== loadData) {
       this.loadData = loadData;
     }
+
     if (checkedIds || defaultCheckedIds) {
-      
       this.updateCheckedIds(checkedIds || defaultCheckedIds);
-      console.log(this.flattenNodes, 'old flattenNodes');
       this.applyCheckedIds();
-      
-      this.flattenNodes = this.flattenTree(this.rootNodes);
-      console.log(this.flattenNodes, 'new flattenNodes');
+      this.notifySubscribers();
     }
+
     if (expandedIds || defaultExpandedIds) {
       this.updateExpandedIds(expandedIds || defaultExpandedIds);
       this.applyExpandedIds();
       this.flattenNodes = this.flattenTree(this.rootNodes);
+      this.notifySubscribers();
     }
   }
 
@@ -276,7 +287,7 @@ export class TreeNodeManager {
   }
 
   private flattenTree(nodes: TreeNodeImpl[], level: number = 0): TreeNodeImpl[] {
-    return nodes.reduce<TreeNodeImpl[]>((acc, node) => {
+    const flattenNodes = nodes.reduce<TreeNodeImpl[]>((acc, node) => {
       node.level = level;
       acc.push(node);
       if (node.children?.length && node.isExpanded) {
@@ -284,5 +295,11 @@ export class TreeNodeManager {
       }
       return acc;
     }, []);
+
+    flattenNodes.forEach((node, index) => {
+      this.idToIndexMap.set(node.id, index);
+    });
+
+    return flattenNodes;
   }
 }

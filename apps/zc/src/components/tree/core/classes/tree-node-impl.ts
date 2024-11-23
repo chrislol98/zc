@@ -16,6 +16,7 @@ export class TreeNodeImpl implements TreeNode {
     parentId: TreeNodeImpl['parentId'];
     isExpanded?: TreeNodeImpl['isExpanded'];
     isChecked?: TreeNodeImpl['isChecked'];
+    level?: TreeNodeImpl['level'];
     children: TreeNodeImpl[];
     data: TreeNode;
   }) {
@@ -24,18 +25,20 @@ export class TreeNodeImpl implements TreeNode {
     this.parentId = params.parentId;
     this.isExpanded = params.isExpanded;
     this.isChecked = params.isChecked;
+    this.level = params.level;
     this.children = params.children;
     this.data = params.data;
   }
 
 
-  clone(data: Partial<TreeNode>): TreeNodeImpl {
+  clone(data: Partial<TreeNodeImpl>): TreeNodeImpl {
     return new TreeNodeImpl({
       id: data.id ?? this.id,
       label: data.label ?? this.label,
       parentId: data.parentId ?? this.parentId,
       isExpanded: data.isExpanded ?? this.isExpanded,
       isChecked: data.isChecked ?? this.isChecked,
+      level: data.level ?? this.level,
       children: this.children,
       data: { ...this.data, ...data }
     });
