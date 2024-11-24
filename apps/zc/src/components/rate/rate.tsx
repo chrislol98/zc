@@ -4,6 +4,7 @@ import { Star } from 'lucide-react';
 import { useState } from 'react';
 import { useDefaultProps } from '@/hooks/use-default-props';
 import React from 'react';
+import { Decimal } from 'decimal.js';
 export interface RateProps {
   value?: number;
   defaultValue?: number;
@@ -32,17 +33,21 @@ export const Rate = (_props: RateProps) => {
   }
 
   function updateValuePrecision(value: number) {
-    const impreciseValue = Math.floor(value / precision) * precision;
-
-    return parseFloat(impreciseValue.toFixed(1));
+    return new Decimal(value)
+      .dividedBy(precision)
+      .floor()
+      .times(precision)
+      .toNumber();
   }
 
   function getPreciseValue(event: React.MouseEvent, index: number) {
     const element = event.currentTarget;
     const rect = element.getBoundingClientRect();
     const x = event.clientX - rect.left;
-    const ratio = parseFloat((x / rect.width).toFixed(1));
-    return index + updateValuePrecision(ratio);
+    const ratio = new Decimal(x).dividedBy(rect.width).toFixed(1);
+    return new Decimal(index)
+      .plus(updateValuePrecision(parseFloat(ratio)))
+      .toNumber();
   }
 
   function onClick(event: React.MouseEvent<HTMLDivElement>, index: number) {
@@ -63,10 +68,12 @@ export const Rate = (_props: RateProps) => {
 
   function render() {
     if (hoverValue === undefined) return null;
-    const fullIndex = Math.floor(hoverValue - 1);
+    const fullIndex = new Decimal(hoverValue).minus(1).floor().toNumber();
     const hasDecimal = hoverValue % 1 !== 0;
     const decimal = hasDecimal
-      ? updateValuePrecision(hoverValue) - Math.floor(hoverValue)
+      ? new Decimal(updateValuePrecision(hoverValue))
+          .minus(new Decimal(hoverValue).floor())
+          .toNumber()
       : 0;
 
     function renderIcon(i: number) {
@@ -75,7 +82,17 @@ export const Rate = (_props: RateProps) => {
       }
 
       if (i === fullIndex + 1 && hasDecimal) {
-        return decimal;
+        return (
+          <div className="relative">
+            {React.cloneElement(emptyIcon)}
+            <div
+              className="absolute top-0 overflow-hidden"
+              style={{ width: `${decimal * 100}%` }}
+            >
+              {React.cloneElement(icon)}
+            </div>
+          </div>
+        );
       }
 
       return React.cloneElement(emptyIcon);
