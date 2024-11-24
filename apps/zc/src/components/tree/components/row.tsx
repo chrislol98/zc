@@ -43,6 +43,8 @@ export function Row({
         )}
       </span>
       <Checkbox
+        // BUG: 注意 treeNode.isChecked 一开始如果是 undefined，它不受控，等一下 treeNode.isChecked 变化他也不会重渲染。
+        // 所以 treeNode.isChecked 需要初始值
         checked={treeNode.isChecked}
         onCheckedChange={handleCheck}
         className="mr-2"

@@ -1,6 +1,6 @@
 import { TreeNodeManager } from '../classes/tree-node-manager';
 import { TreeNode } from '../types';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 export function useTreeNodeManager(
   data: TreeNode[],

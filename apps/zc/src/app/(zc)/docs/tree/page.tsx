@@ -37,6 +37,7 @@ export default function Page() {
       data={treeData}
       // checkedIds={checkedIds}
       // onCheck={(val) => {
+      //   console.log(val, 'val');
       //   setCheckedIds(val);
       // }}
       // expandedIds={expandsId}
