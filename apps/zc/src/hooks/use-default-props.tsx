@@ -16,6 +16,7 @@ export function useDefaultProps<T extends object, A extends T>(
     const props = { ...originalProps } as MergedProps<T, A>;
 
     (Object.keys(defaultProps) as (keyof T)[]).forEach((key) => {
+      // 如果props没有，才赋值
       if (props[key] === undefined) {
         (props as A)[key] = defaultProps[key];
       }
