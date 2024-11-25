@@ -46,7 +46,7 @@ export class TreeNodeManager {
     if (key === 'isExpanded') {
       this.updateNodeExpansion(id, value);
     } else if (key === 'isChecked') {
-      this.updateNodeCheck(id, value);
+      this.updateNodeCheck(id, value as TreeNode['isChecked']);
     }
   };
   updateNodeExpansion(id: TreeNodeImpl['id'], value: TreeNode[keyof TreeNode]) {
@@ -70,7 +70,7 @@ export class TreeNodeManager {
       this.expandedIds.preValue = currentExpandedIds;
     }
   }
-  // TODO: 看是不是能够优化的根applyCheckedIds一样
+  // TODO: 看是不是能够优化
   applyExpandedIds() {
     if (this.expandedIds.preValue) {
       this.expandedIds.preValue.forEach(id => {
@@ -86,43 +86,29 @@ export class TreeNodeManager {
 
   }
 
-  updateNodeCheck(id: TreeNodeImpl['id'], value: TreeNode[keyof TreeNode]) {
+  updateNodeCheck(id: TreeNodeImpl['id'], value: TreeNode['isChecked']) {
     const { isControlled } = this.checkedIds;
     const thisCheckedIds = new Set(this.checkedIds.value);
-    const collectCheckedIds = (id: TreeNodeImpl['id']) => {
-      const node = this.nodeMap.get(id);
-      if (!node) return;
-      if (value) {
-        thisCheckedIds.add(id);
-      } else {
-        thisCheckedIds.delete(id);
-      }
-      node.children?.forEach(child => {
-        collectCheckedIds(child.id);
-      })
+    if (!isControlled) {
+      this.updateNodeImpl(id, 'isChecked', value);
     }
-    collectCheckedIds(id);
+    if (value) {
+      thisCheckedIds.add(id);
+    } else {
+      thisCheckedIds.delete(id);
+    }
+
+
+    // 1. 收集父子节点
+    // 2. 顺便看要不要更新父子节点
+    this.collectChildrenCheckedIds(id, { checkedIds: thisCheckedIds, value, isControlled });
+    this.collectParentCheckedIds(id, { checkedIds: thisCheckedIds, isControlled });
 
     if (!isControlled) {
-      const updateNodeChildrenCheck = (id: TreeNodeImpl['id']) => {
-        const node = this.nodeMap.get(id);
-        if (!node) return;
-        node.children?.forEach(child => {
-          this.updateNodeImpl(child.id, 'isChecked', value)
-          updateNodeChildrenCheck(child.id);
-        })
-      }
-      // update
-      this.updateNodeImpl(id, 'isChecked', value);
-      if (!this.checkStrictly) {
-        updateNodeChildrenCheck(id);
-        this.updateParentNodeCheck(id);
-      }
-      // collect
       this.updateCheckedIds(undefined, [...thisCheckedIds]);
-      // notify
       this.notifySubscribers();
     }
+
     this.onCheck?.([...thisCheckedIds]);
   }
 
@@ -135,7 +121,32 @@ export class TreeNodeManager {
       this.checkedIds.preValue = currentCheckedIds;
     }
   }
-  updateParentNodeCheck(id: TreeNodeImpl['id']) {
+  collectChildrenCheckedIds = (id: TreeNodeImpl['id'], options: {
+    checkedIds?: Set<TreeNodeImpl['id']>;
+    value: TreeNode['isChecked'];
+
+  }) => {
+    const { checkedIds, value, } = options;
+    const node = this.nodeMap.get(id);
+    if (!node) return;
+    node.children?.forEach(child => {
+      debugger;
+      if (value) {
+        checkedIds?.add(child.id);
+      } else {
+        checkedIds?.delete(child.id);
+      }
+      if (!this.checkStrictly) {
+        this.updateNodeImpl(child.id, 'isChecked', value);
+      }
+      this.collectChildrenCheckedIds(child.id, { checkedIds, value, });
+    })
+  }
+  collectParentCheckedIds = (id: TreeNodeImpl['id'], options: {
+    checkedIds?: Set<TreeNodeImpl['id']>;
+  }) => {
+    const { checkedIds } = options;
+
     const isChildrenAllChecked = (id: TreeNodeImpl['id']): boolean => {
       const node = this.nodeMap.get(id);
       if (!node) return false;
@@ -152,40 +163,34 @@ export class TreeNodeManager {
         return !child.isChecked && isChildrenAllUnchecked(child.id);
       });
     }
-    const updateParentNodeCheckImpl = (id: TreeNodeImpl['id']) => {
+    const collectParentCheckedIdsImpl = (id: TreeNodeImpl['id']) => {
       const node = this.nodeMap.get(id);
       if (!node) return;
       const parentNode = this.nodeMap.get(node.parentId);
       if (!parentNode) return;
       if (!isChildrenAllChecked(parentNode.id) && !isChildrenAllUnchecked(parentNode.id)) {
-        this.updateNodeImpl(parentNode.id, 'isChecked', 'indeterminate');
-      } else if (isChildrenAllChecked(parentNode.id)) {
-        this.updateNodeImpl(parentNode.id, 'isChecked', true);
-      } else if (isChildrenAllUnchecked(parentNode.id)) {
-        this.updateNodeImpl(parentNode.id, 'isChecked', false);
+        if (checkedIds?.has(parentNode.id)) {
+          checkedIds.delete(parentNode.id);
+        }
+        if (!this.checkStrictly) {
+          this.updateNodeImpl(parentNode.id, 'isChecked', 'indeterminate');
+        }
+      } else if (isChildrenAllChecked(parentNode.id) && parentNode.isChecked !== true) {
+        checkedIds?.add(parentNode.id);
+        if (!this.checkStrictly) {
+          this.updateNodeImpl(parentNode.id, 'isChecked', true);
+        }
+      } else if (isChildrenAllUnchecked(parentNode.id) && parentNode.isChecked !== false) {
+        checkedIds?.delete(parentNode.id);
+        if (!this.checkStrictly) {
+          this.updateNodeImpl(parentNode.id, 'isChecked', false);
+        }
       }
-      updateParentNodeCheckImpl(parentNode.id);
+      collectParentCheckedIdsImpl(parentNode.id);
     }
-    updateParentNodeCheckImpl(id);
+    collectParentCheckedIdsImpl(id);
   }
-  applyCheckedIds() {
-    const preValue = new Set(this.checkedIds.preValue || []);
-    const value = new Set(this.checkedIds.value || []);
 
-    // Only uncheck nodes that are not in the new value
-    preValue.forEach(id => {
-      if (!value.has(id)) {
-        this.updateNodeImpl(id, 'isChecked', false);
-      }
-    });
-
-    // Only check nodes that were not already checked
-    value.forEach(id => {
-      if (!preValue.has(id)) {
-        this.updateNodeImpl(id, 'isChecked', true);
-      }
-    });
-  }
 
   updateNodeImpl(id: TreeNodeImpl['id'], key: keyof TreeNode, value: TreeNode[keyof TreeNode]): void {
     const node = this.nodeMap.get(id);
@@ -253,8 +258,25 @@ export class TreeNodeManager {
     }
 
     if (checkedIds || defaultCheckedIds) {
-      this.updateCheckedIds(checkedIds || defaultCheckedIds);
-      this.applyCheckedIds();
+      this.updateCheckedIds(checkedIds, defaultCheckedIds);
+      const checkedIdsSet = new Set(this.checkedIds.value);
+      const oldCheckedIdsSet = new Set(this.checkedIds.preValue);
+
+      oldCheckedIdsSet.forEach(id => {
+        if (!checkedIdsSet.has(id)) {
+          this.updateNodeImpl(id, 'isChecked', false);
+          this.collectChildrenCheckedIds(id, { checkedIds: checkedIdsSet, value: false, });
+          this.collectParentCheckedIds(id, { checkedIds: checkedIdsSet, });
+        }
+      });
+      checkedIdsSet.forEach(id => {
+        if (!oldCheckedIdsSet.has(id)) {
+          this.updateNodeImpl(id, 'isChecked', true);
+          this.collectChildrenCheckedIds(id, { checkedIds: checkedIdsSet, value: true, });
+          this.collectParentCheckedIds(id, { checkedIds: checkedIdsSet, });
+        }
+      });
+      this.updateCheckedIds([...checkedIdsSet]);
       this.notifySubscribers();
     }
 
