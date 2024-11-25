@@ -275,6 +275,7 @@ export class TreeNodeManager {
           parentId,
           data: item,
           isExpanded: this.expandedIds.value?.includes(item.id),
+          // 沒有初始值，checkbox 不受控
           isChecked: this.checkedIds.value?.includes(item.id) ?? false,
           children: item.children ? buildTreeImpl(item.children, item.id) : []
         });
