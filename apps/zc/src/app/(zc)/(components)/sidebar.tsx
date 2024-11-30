@@ -14,7 +14,7 @@ const menuItems: MenuItem[] = [
   { title: 'Tree', href: '/docs/tree' },
   { title: 'Rate', href: '/docs/rate' },
   { title: 'Dynamic Form', href: '/docs/dynamic-form' },
-  { title: 'Table', href: '/docs/table' },
+  { title: 'Data-Table', href: '/docs/data-table' },
   { title: 'Tanstack Query', href: '/docs/tanstack-query' },
 ];
 

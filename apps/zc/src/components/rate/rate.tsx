@@ -40,19 +40,9 @@ export const Rate = (_props: RateProps) => {
       .toNumber();
   }
 
-  function getPreciseValue(event: React.MouseEvent, index: number) {
-    const element = event.currentTarget;
-    const rect = element.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const ratio = new Decimal(x).dividedBy(rect.width).toFixed(1);
-    return new Decimal(index)
-      .plus(updateValuePrecision(parseFloat(ratio)))
-      .toNumber();
-  }
-
-  function onClick(event: React.MouseEvent<HTMLDivElement>, index: number) {
+  function onClick(event: React.MouseEvent<HTMLDivElement>) {
     if (disabled) return;
-    const newValue = getPreciseValue(event, index);
+    const newValue = getPreciseValue(event);
     if (newValue === value) {
       setValue(0);
       setHoverValue(0);
@@ -60,10 +50,19 @@ export const Rate = (_props: RateProps) => {
       setValue(newValue);
     }
   }
-
-  function onMouseMove(event: React.MouseEvent<HTMLDivElement>, index: number) {
+  
+  function getPreciseValue(event: React.MouseEvent<HTMLDivElement>) {
+    const element = event.currentTarget;
+    const elementRect = element.getBoundingClientRect();
+    const iconRect = element.children[0].getBoundingClientRect();
+    const x = new Decimal(event.clientX).minus(elementRect.left).toNumber();
+    const value = new Decimal(x).dividedBy(iconRect.width).toFixed(1);
+    return updateValuePrecision(parseFloat(value));
+  }
+  function onMouseMove(event: React.MouseEvent<HTMLDivElement>) {
     if (disabled) return;
-    setHoverValue(getPreciseValue(event, index));
+    const value = getPreciseValue(event);
+    setHoverValue(value);
   }
 
   function render() {
@@ -98,20 +97,16 @@ export const Rate = (_props: RateProps) => {
       return React.cloneElement(emptyIcon);
     }
 
-    return [...Array(count)].map((_, i) => (
-      <div key={i} className=" px-0.5">
-        <div
-          onClick={(e) => onClick(e, i)}
-          onMouseMove={(e) => onMouseMove(e, i)}
-        >
-          {renderIcon(i)}
-        </div>
-      </div>
-    ));
+    return [...Array(count)].map((_, i) => <div key={i}>{renderIcon(i)}</div>);
   }
 
   return (
-    <div className="flex cursor-pointer" onMouseLeave={resetHoverValue}>
+    <div
+      className="flex cursor-pointer"
+      onMouseLeave={resetHoverValue}
+      onClick={(e) => onClick(e)}
+      onMouseMove={(e) => onMouseMove(e)}
+    >
       {render()}
     </div>
   );
