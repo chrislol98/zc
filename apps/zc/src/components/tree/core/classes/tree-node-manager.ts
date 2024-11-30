@@ -101,8 +101,8 @@ export class TreeNodeManager {
 
     // 1. 收集父子节点
     // 2. 顺便看要不要更新父子节点
-    this.collectChildrenCheckedIds(id, { checkedIds: thisCheckedIds, value, isControlled });
-    this.collectParentCheckedIds(id, { checkedIds: thisCheckedIds, isControlled });
+    this.collectChildrenCheckedIds(id, { checkedIds: thisCheckedIds, value });
+    this.collectParentCheckedIds(id, { checkedIds: thisCheckedIds });
 
     if (!isControlled) {
       this.updateCheckedIds(undefined, [...thisCheckedIds]);
