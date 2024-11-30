@@ -1,4 +1,4 @@
-import { Json } from "./types";
+import { Json } from "./jsons/json";
 
 export class JsonManager {
   map: Map<Json['id'], Json> = new Map();
