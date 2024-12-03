@@ -1,5 +1,5 @@
 export class Json {
-  key: 'div';
+  key: 'form';
   id: string | number;
   children?: Json[];
   constructor(params: {
