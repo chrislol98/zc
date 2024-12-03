@@ -9,6 +9,7 @@ export interface RateProps {
   value?: number;
   defaultValue?: number;
   count?: number;
+  onChange?: (value: number) => void;
   icon?: React.ReactNode;
   precision?: number;
   disabled?: boolean;
